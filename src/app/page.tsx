@@ -1,65 +1,139 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import {
+  Database,
+  HardDrive,
+  FileText,
+  ListChecks,
+  MemoryStick,
+  Plug,
+  Users,
+  Activity,
+  Truck,
+  PackageCheck,
+} from "lucide-react";
+import Header from "@/components/layout/Header";
+import StatusCard from "@/components/cards/StatusCard";
+import MetricCard from "@/components/cards/MetricCard";
+import BarChartCard from "@/components/charts/BarChartCard";
+import EventTimeline from "@/components/tables/EventTimeline";
+import { useHealth } from "@/hooks/useHealth";
+import { useSessions } from "@/hooks/useSessions";
+import { useFreightPipeline } from "@/hooks/useFreightPipeline";
+import { useDailyReport } from "@/hooks/useDailyReport";
+import { useSecurityEvents } from "@/hooks/useSecurityEvents";
+import { HEALTH_CHECK_LABELS } from "@/lib/constants";
+import type { LucideIcon } from "lucide-react";
+
+const HEALTH_ICONS: Record<string, LucideIcon> = {
+  database: Database,
+  disk_space: HardDrive,
+  log_size: FileText,
+  queue_health: ListChecks,
+  cache: MemoryStick,
+  ssw_integration: Plug,
+  sessions: Users,
+};
+
+export default function OverviewPage() {
+  const { data: health, isLoading: healthLoading } = useHealth();
+  const { data: sessions, isLoading: sessionsLoading } = useSessions();
+  const { data: pipeline, isLoading: pipelineLoading } = useFreightPipeline();
+  const { data: report, isLoading: reportLoading } = useDailyReport();
+  const { data: events, isLoading: eventsLoading } = useSecurityEvents({ per_page: 20 });
+
+  const opsChartData = report
+    ? [
+        {
+          name: "24h",
+          Criadas: report.operations.freight_orders_created,
+          Finalizadas: report.operations.freight_orders_finalized,
+          Canceladas: report.operations.freight_orders_cancelled,
+        },
+      ]
+    : [];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      <Header title="Overview" subtitle="Visao geral do sistema" />
+
+      {/* Health Status Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+        {health
+          ? Object.entries(health.checks).map(([key, check]) => (
+              <StatusCard
+                key={key}
+                label={HEALTH_CHECK_LABELS[key] || key}
+                ok={check.ok}
+                detail={check.detail}
+                icon={HEALTH_ICONS[key] || Activity}
+                loading={false}
+              />
+            ))
+          : Array.from({ length: 7 }).map((_, i) => (
+              <StatusCard
+                key={i}
+                label=""
+                ok={true}
+                detail=""
+                icon={Activity}
+                loading={healthLoading}
+              />
+            ))}
+      </div>
+
+      {/* Counter Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        <MetricCard
+          label="Sessoes Ativas"
+          value={sessions?.total ?? "-"}
+          icon={Users}
+          color="text-soc-info"
+          subtitle="Ultimos 30 min"
+          loading={sessionsLoading}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+        <MetricCard
+          label="OCs em Andamento"
+          value={pipeline?.total_active ?? "-"}
+          icon={Truck}
+          color="text-soc-warning"
+          subtitle={`${pipeline?.cancelled ?? 0} canceladas total`}
+          loading={pipelineLoading}
+        />
+        <MetricCard
+          label="OCs Criadas (24h)"
+          value={report?.operations.freight_orders_created ?? "-"}
+          icon={PackageCheck}
+          color="text-soc-success"
+          subtitle={`${report?.operations.freight_orders_finalized ?? 0} finalizadas`}
+          loading={reportLoading}
+        />
+      </div>
+
+      {/* Timeline + Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-xl border border-soc-border bg-soc-card p-4">
+          <h3 className="text-sm font-medium text-gray-300 mb-3">
+            Eventos Recentes de Seguranca
+          </h3>
+          <div className="max-h-[400px] overflow-y-auto">
+            <EventTimeline events={events?.data ?? []} loading={eventsLoading} />
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        <BarChartCard
+          title="Operacoes (24h)"
+          data={opsChartData}
+          xDataKey="name"
+          bars={[
+            { dataKey: "Criadas", color: "#3b82f6", name: "Criadas" },
+            { dataKey: "Finalizadas", color: "#10b981", name: "Finalizadas" },
+            { dataKey: "Canceladas", color: "#ef4444", name: "Canceladas" },
+          ]}
+          loading={reportLoading}
+          height={340}
+        />
+      </div>
+    </>
   );
 }
