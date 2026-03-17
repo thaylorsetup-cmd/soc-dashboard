@@ -1,0 +1,43 @@
+# =====================================================
+# SOC Dashboard - Docker Stack (Docker Swarm / Portainer)
+# Deploy: docker stack deploy -c docker-stack.yml soc-dashboard
+# Domain: https://monitor.bbttransportes.com.br
+# =====================================================
+
+version: '3.7'
+
+networks:
+  network_public:
+    external: true
+
+services:
+  soc-dashboard:
+    image: soc-dashboard:latest
+    environment:
+      TZ: America/Sao_Paulo
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: https://app.bbttransportes.com.br
+    networks:
+      - network_public
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        traefik.enable: "true"
+        traefik.docker.network: network_public
+        traefik.http.routers.soc-dashboard.rule: "Host(`monitor.bbttransportes.com.br`)"
+        traefik.http.routers.soc-dashboard.entrypoints: websecure
+        traefik.http.routers.soc-dashboard.tls: "true"
+        traefik.http.routers.soc-dashboard.tls.certresolver: letsencryptresolver
+        traefik.http.routers.soc-dashboard.service: soc-dashboard
+        traefik.http.services.soc-dashboard.loadbalancer.server.port: "3000"
+        traefik.http.services.soc-dashboard.loadbalancer.passHostHeader: "true"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
