@@ -42,7 +42,7 @@ export async function socFetch<T>(
 
   if (res.status === 401 || res.status === 403) {
     if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-      window.location.href = "/login";
+      window.location.href = "/soc-dashboard/login";
     }
     throw new Error("Unauthorized");
   }

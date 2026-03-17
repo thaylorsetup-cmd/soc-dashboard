@@ -45,7 +45,7 @@ export async function login(email: string, password: string): Promise<boolean> {
 export function logout() {
   setAccessToken(null);
   sessionStorage.removeItem(TOKEN_KEY);
-  window.location.href = "/login";
+  window.location.href = "/soc-dashboard/login";
 }
 
 export function isAuthenticated(): boolean {

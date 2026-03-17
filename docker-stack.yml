@@ -1,7 +1,8 @@
 # =====================================================
 # SOC Dashboard - Docker Stack (Docker Swarm / Portainer)
 # Deploy: docker stack deploy -c docker-stack.yml soc-dashboard
-# Domain: https://monitor.bbttransportes.com.br
+# Access: https://app.bbttransportes.com.br/soc-dashboard/
+# Future: https://monitor.bbttransportes.com.br (when DNS is ready)
 # =====================================================
 
 version: '3.7'
@@ -28,15 +29,27 @@ services:
       labels:
         traefik.enable: "true"
         traefik.docker.network: network_public
+
+        # Router: sub-path on existing domain (immediate access)
+        traefik.http.routers.soc-app.rule: "Host(`app.bbttransportes.com.br`) && PathPrefix(`/soc-dashboard`)"
+        traefik.http.routers.soc-app.entrypoints: websecure
+        traefik.http.routers.soc-app.tls: "true"
+        traefik.http.routers.soc-app.tls.certresolver: letsencryptresolver
+        traefik.http.routers.soc-app.service: soc-dashboard
+        traefik.http.routers.soc-app.priority: "200"
+
+        # Router: dedicated domain (when DNS is configured)
         traefik.http.routers.soc-dashboard.rule: "Host(`monitor.bbttransportes.com.br`)"
         traefik.http.routers.soc-dashboard.entrypoints: websecure
         traefik.http.routers.soc-dashboard.tls: "true"
         traefik.http.routers.soc-dashboard.tls.certresolver: letsencryptresolver
         traefik.http.routers.soc-dashboard.service: soc-dashboard
+
+        # Service
         traefik.http.services.soc-dashboard.loadbalancer.server.port: "3000"
         traefik.http.services.soc-dashboard.loadbalancer.passHostHeader: "true"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/soc-dashboard/"]
       interval: 30s
       timeout: 10s
       retries: 3
